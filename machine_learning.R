@@ -1243,7 +1243,8 @@ chisq_test_results <- function(categorical_features) {
     cat_list <- unlist(append(cat_list, i))
     frequency_table <-
       table(credit_data[["credit_risk"]], credit_data[[i]])
-    chisquared_test_obj <- chisq.test(frequency_table)
+    
+    chisquared_test_obj <- suppressWarnings(chisq.test(frequency_table))
     p_value_list <-
       unlist(append(p_value_list, chisquared_test_obj$p.value))
     test_statistic_list <-
@@ -1270,8 +1271,10 @@ chisq_test_results <- function(categorical_features) {
     "critical_value"
   )
   
-  return(suppressWarnings(chisquared_df))
+  
+  return(chisquared_df)
 }
+
 
 chisquared_data <- chisq_test_results(categorical_columns)
 

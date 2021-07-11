@@ -16,6 +16,7 @@ library(tools)        # String Manipulation
 library(data.table)
 library(janitor)
 library(reshape2)
+library(highcharter)
 
 ###########################################
 ############ Importing Dataset ############
@@ -115,7 +116,7 @@ picker_creator <- function(features) {
       ),
       choicesOpt = list(style = rep(
         c(
-          "color : grey ;font-size: 100%; background: white;font-weight: bold;"
+          "color : grey ; background: white;font-weight: bold;"
         ),
         length(levels(german_credit_data[, i]))
       ))
@@ -249,13 +250,13 @@ server <- function(input, output, session) {
     
     model_predictions <- predict(sample_model,testing_input_dataframe)
     
-    model_probabilities_df <- melt(predict(sample_model,testing_input_dataframe,type = "prob"))
+    model_probabilities_df <- suppressMessages(melt(predict(sample_model,testing_input_dataframe,type = "prob")))
     
     colnames(model_probabilities_df) <- c("label","value")
     
     model_probabilities_df$approval <- if_else(model_probabilities_df$label == "Good","Yes","No")
     
-    model_probabilities_df$value    <- round(model_probabilities_df$value * 100,2) 
+    model_probabilities_df$value    <- round(model_probabilities_df$value * 100,2)
     
     print(model_probabilities_df)
   })
@@ -273,24 +274,24 @@ server <- function(input, output, session) {
           endAngle = 90,
           center = list('50%', '75%'),
           size = '100%'
-        ) %>% 
+        ) %>%
         hc_title(
           text = "Credit Approval Status",
           margin = 20,
           align = "center",
           style = list(color = "black")
-        ) %>% hc_colors(c("green","red")) 
+        ) %>% hc_colors(c("green","red"))
     }
   })
   
   observeEvent(input$submit_button_id,
-               if(!allTruthy(input$account_balance_id) | !allTruthy(input$credit_history_id) | 
-                  !allTruthy(input$credit_purpose_id) | !allTruthy(input$savings_account_bonds_id) | 
-                  !allTruthy(input$foreign_worker_id) | !allTruthy(input$job_status_id) |
-                  !allTruthy(input$employment_history_id) | !allTruthy(input$other_installment_plans_id) | 
-                  !allTruthy(input$marital_status_sex_id) | !allTruthy(input$property_type_id) | 
-                  !allTruthy(input$housing_type_id) | !allTruthy(input$telephone_status_id) |
-                  !allTruthy(input$debtors_guarantor_status_id)
+               if(!isTruthy(input$account_balance_id) | !isTruthy(input$credit_history_id) | 
+                  !isTruthy(input$credit_purpose_id) | !isTruthy(input$savings_account_bonds_id) | 
+                  !isTruthy(input$foreign_worker_id) | !isTruthy(input$job_status_id) |
+                  !isTruthy(input$employment_history_id) | !isTruthy(input$other_installment_plans_id) | 
+                  !isTruthy(input$marital_status_sex_id) | !isTruthy(input$property_type_id) | 
+                  !isTruthy(input$housing_type_id) | !isTruthy(input$telephone_status_id) |
+                  !isTruthy(input$debtors_guarantor_status_id)
                ) {
                  sendSweetAlert(
                    session = session,
@@ -316,8 +317,9 @@ header <- dashboardHeader(
   )
 )
 
-tag_widget_height <- tags$style(".choosechannel .btn {height: 22.5px; min-height: 22.5px; padding: 0px;}")
 
+tag_widget_height <- tags$style(".choosechannel .btn   {height: 15.5px;padding: 0px;
+                                font-size : 10px; font-weight: bold;}")
 # Side Bar
 sidebar <- dashboardSidebar(width = 430,
                             collapsed = FALSE,
@@ -388,6 +390,4 @@ shinyApp(ui = ui, server = server)
 
 #######
 # conver rad to num
-
-
 
