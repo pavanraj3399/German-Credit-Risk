@@ -11,10 +11,12 @@ library(plotly)       # Data Visualization
 library(RColorBrewer) # Data Visualization
 library(stringr)      # String Manipulation
 library(tools)        # String Manipulation
-library(caTools)
-library(caret)
-library(pROC)
-library(gdata)
+library(caTools)      # Sampling
+library(caret)        # Machine learning
+library(pROC)         # ROC curves.
+library(gdata)        #
+library(rattle)       # Plot CART
+
 
 
 ###########################################
@@ -117,9 +119,6 @@ credit_data$account_balance <-
       )
     )
   )
-
-
-
 
 
 # credit_history - Credit history (qualitative)
@@ -373,27 +372,43 @@ credit_data$credit_risk <-
 
 
 # Order levels in account balance
-credit_data$account_balance <- 
-  factor(credit_data$account_balance,labels = c("Less than 0 DM","Between 0 and  200 DM",
-                                                "Greater than or equal to  200 DM","No checking account"))
+credit_data$account_balance <-
+  factor(
+    credit_data$account_balance,
+    labels = c(
+      "Less than 0 DM",
+      "Between 0 and  200 DM",
+      "Greater than or equal to  200 DM",
+      "No checking account"
+    )
+  )
 
 
 # Order levels in savings_account_bonds
-credit_data$savings_account_bonds <- 
-  factor(credit_data$savings_account_bonds,labels = c("Less than 100 DM",
-                                                      "Between 100 and 500 DM",
-                                                      "Between 500 and 1000 DM",
-                                                      "Greater than or equal to 1000 DM",
-                                                      "Unknown / no known savings" 
-  ))
+credit_data$savings_account_bonds <-
+  factor(
+    credit_data$savings_account_bonds,
+    labels = c(
+      "Less than 100 DM",
+      "Between 100 and 500 DM",
+      "Between 500 and 1000 DM",
+      "Greater than or equal to 1000 DM",
+      "Unknown / no known savings"
+    )
+  )
 
 # Order levels in employment_history
-credit_data$employment_history <- 
-  factor(credit_data$employment_history,labels = c("Less than 1 year",
-                                                   "Between 1 and 4 years",
-                                                   "Between 4 and 7 years",
-                                                   "Greater than or equal to 7 years",
-                                                   "Unemployed"))
+credit_data$employment_history <-
+  factor(
+    credit_data$employment_history,
+    labels = c(
+      "Less than 1 year",
+      "Between 1 and 4 years",
+      "Between 4 and 7 years",
+      "Greater than or equal to 7 years",
+      "Unemployed"
+    )
+  )
 
 
 
@@ -1142,6 +1157,8 @@ ttest_pvalues_result <- function(numerical_features) {
 ttest_df <- ttest_pvalues_result(numerical_columns)
 ttest_df
 
+write.csv(ttest_df,
+          "~/Desktop/Shiny_application/files_generated/ttest_df.csv")
 
 ####################################################################
 ################### Anova - Analysis of Variance ###################
@@ -1216,6 +1233,8 @@ anova_df <-
 
 anova_df  %>% filter(p_value > 0.05)
 
+write.csv(anova_df,
+          "~/Desktop/Shiny_application/files_generated/anova_df.csv")
 
 ########################################################
 ################### Chi-Squared Test ###################
@@ -1244,7 +1263,8 @@ chisq_test_results <- function(categorical_features) {
     frequency_table <-
       table(credit_data[["credit_risk"]], credit_data[[i]])
     
-    chisquared_test_obj <- suppressWarnings(chisq.test(frequency_table))
+    chisquared_test_obj <-
+      suppressWarnings(chisq.test(frequency_table))
     p_value_list <-
       unlist(append(p_value_list, chisquared_test_obj$p.value))
     test_statistic_list <-
@@ -1282,6 +1302,11 @@ chisquared_data %>% filter(p_value < 0.05)
 
 chisquared_data %>% filter(`test_statistic_X-squared` < critical_value)
 
+write.csv(
+  chisquared_data,
+  "~/Desktop/Shiny_application/files_generated/chisquared_data.csv"
+)
+
 ###################################################################
 ###################### Machine learning ###########################
 ###################################################################
@@ -1302,9 +1327,12 @@ training_data <- subset(credit_data, split == TRUE)
 testing_data  <- subset(credit_data, split == FALSE)
 
 
-saveRDS(credit_data,"credit_data.rds")
-saveRDS(training_data,"training_data.rds")
-saveRDS(testing_data,"testing_data.rds")
+saveRDS(credit_data,
+        "~/Desktop/Shiny_application/application/credit_data.rds")
+saveRDS(training_data,
+        "~/Desktop/Shiny_application/application/training_data.rds")
+saveRDS(testing_data,
+        "~/Desktop/Shiny_application/application/testing_data.rds")
 
 
 # Target proportion in training data
@@ -1312,7 +1340,6 @@ table(training_data$credit_risk) / nrow(training_data) * 100
 
 # Target proportion in testing data
 table(testing_data$credit_risk) / nrow(testing_data) * 100
-
 
 
 ###########################################################
@@ -1372,7 +1399,7 @@ caret_models_df
 #'
 #' @param classification_models -  classification models from caret package
 #' @param predictor_features - Predictor features for the model
-#' @param return_type - if return_type == "confusion matrix" then return confusion matrices from the models 
+#' @param return_type - if return_type == "confusion matrix" then return confusion matrices from the models
 
 #' - if return_type == "metrics dataframe" then return dataframe with model performance metrics with columns "Model", "Method","Accuracy","Kappa","Sensitivity","Specificity","Precision","Recall","F1-score","True_Positives","True_Negatives","False_Positives","False_Negatives","AUC"
 
@@ -1384,7 +1411,6 @@ model_selection <-
   function(classification_models,
            predictor_features,
            return_type) {
-    
     classification_models <- sort(classification_models)
     
     # Subset predictor features without credit risk
@@ -1447,7 +1473,8 @@ model_selection <-
         append(classification_report_list, report)
       accuracy_list    <-
         unlist(append(accuracy_list, report$overall[1]))
-      kappa_list       <- unlist(append(kappa_list, report$overall[2]))
+      kappa_list       <-
+        unlist(append(kappa_list, report$overall[2]))
       sensitivity_list <-
         unlist(append(sensitivity_list, report$byClass[1]))
       specificity_list <-
@@ -1554,6 +1581,7 @@ model_selection <-
   }
 
 
+'''
 confusion_matrix_dat <-
   model_selection(
     caret_models_df$method,
@@ -1575,12 +1603,41 @@ rocr_plot_plotly <-
                   "ROC curve")
 
 
+# ROC curves
 rocr_plot_plotly
+saveRDS(rocr_plot_plotly,"~/Desktop/Shiny_application/files_generated/roc_curves.rds")
+
+
+# confusion matrices
 confusion_matrix_dat
+
+suppressWarnings(lapply(confusion_matrix_dat,
+       function(x) write.table( data.frame(x),
+                                "~/Desktop/Shiny_application/files_generated/confusion_matrices.txt",
+                                append= T, sep= "," )))
+
+saveRDS(confusion_matrix_dat,"~/Desktop/Shiny_application/files_generated/confusion_matrices.rds")
+
+# model metrics
 metrics_df
+write.csv(metrics_df,"~/Desktop/Shiny_application/files_generated/model_metrics.csv")
+saveRDS(metrics_df,"~/Desktop/Shiny_application/files_generated/model_metrics.rds")
+'''
+
+# ROC curves
+roc_curves_rds  <-
+  readRDS("~/Desktop/Shiny_application/files_generated/roc_curves.rds")
+
+# confusion matrices
+confusion_matrices_rds <-
+  readRDS("~/Desktop/Shiny_application/files_generated/confusion_matrices.rds")
+
+# model metrics
+model_metrics_rds <-
+  readRDS("~/Desktop/Shiny_application/files_generated/model_metrics.rds")
 
 
-imp_models <- c("bayesglm","ctree","glm","LMT","treebag")
+imp_models <- c("bayesglm", "ctree", "glm", "LMT", "treebag")
 
 ####################################################
 #################  Logistic model #################
@@ -1608,15 +1665,9 @@ logit_model <- caret::train(
 # Model Summary
 summary(logit_model)
 
-
-logit_model
-
-
 # Predict Probabilities
 logit_probabilities <- predict(logit_model,
                                type = "prob", newdata = testing_data)
-
-
 
 # Predict labels
 logit_predictions <- predict(logit_model,
@@ -1625,10 +1676,8 @@ logit_predictions <- predict(logit_model,
 # Classification report
 confusionMatrix(logit_predictions, testing_data$credit_risk, positive = "Bad")
 
-saveRDS(logit_model,"sample_model.rds")
-
-formula(logit_model$finalModel)
-
+saveRDS(logit_model,
+        "~/Desktop/Shiny_application/application/sample_model.rds")
 
 ##########################################################
 #################  Logistic model Update #################
@@ -1648,15 +1697,15 @@ fit_control <- trainControl(
 # Logistic model Update
 logit_model_update <- caret::train(
   credit_risk ~ account_balance + log(month_duration) +
-    credit_purpose  +  savings_account_bonds * credit_history + 
-    employment_history + installment_percent_disposable_income + 
-    marital_status_sex * I(age_years ^ 2) + 
-    debtors_guarantor_status + 
-    residence_history_years * property_type  + 
-    I(credit_amount ^ 2)  + 
-    other_installment_plans + housing_type + 
-    existing_credits_current_bank + job_status*foreign_worker +
-    people_liable_maintainance + 
+    credit_purpose  +  savings_account_bonds * credit_history +
+    employment_history + installment_percent_disposable_income +
+    marital_status_sex * I(age_years ^ 2) +
+    debtors_guarantor_status +
+    residence_history_years * property_type  +
+    I(credit_amount ^ 2)  +
+    other_installment_plans + housing_type +
+    existing_credits_current_bank + job_status * foreign_worker +
+    people_liable_maintainance +
     telephone_status ,
   data = training_data,
   method = "glm",
@@ -1679,7 +1728,9 @@ logit_model_update_predictions <- predict(logit_model_update,
                                           type = "raw", newdata = testing_data)
 
 # Classification report
-confusionMatrix(logit_model_update_predictions, testing_data$credit_risk, positive = "Bad")
+confusionMatrix(logit_model_update_predictions,
+                testing_data$credit_risk,
+                positive = "Bad")
 
 
 logit_model_update$finalModel
@@ -1689,7 +1740,7 @@ logit_model_update$finalModel
 #################  Logistic Model Trees #################
 #########################################################
 
-caret_models_df
+
 # Repeated 10 fold  cross-validation
 set.seed(123)
 fit_control <- trainControl(
@@ -1701,21 +1752,22 @@ fit_control <- trainControl(
 
 # Logistic Model Trees
 logit_model_trees <- caret::train(
-  credit_risk~ account_balance + log(month_duration) +
-    credit_purpose  +  savings_account_bonds * credit_history + 
-    employment_history + installment_percent_disposable_income + 
-    marital_status_sex * I(age_years ^ 2) + 
-    debtors_guarantor_status + 
-    residence_history_years * property_type  + 
-    I(credit_amount ^ 2)  + 
-    other_installment_plans + housing_type + 
-    existing_credits_current_bank + job_status*foreign_worker +
-    people_liable_maintainance + 
+  credit_risk ~ account_balance + log(month_duration) +
+    credit_purpose  +  savings_account_bonds * credit_history +
+    employment_history + installment_percent_disposable_income +
+    marital_status_sex * I(age_years ^ 2) +
+    debtors_guarantor_status +
+    residence_history_years * property_type  +
+    I(credit_amount ^ 2)  +
+    other_installment_plans + housing_type +
+    existing_credits_current_bank + job_status * foreign_worker +
+    people_liable_maintainance +
     telephone_status ,
   data = training_data,
   method = "LMT",
   trControl = fit_control
 )
+
 
 
 logit_model_trees$finalModel
@@ -1724,7 +1776,7 @@ summary(logit_model_trees)
 # Model Summary
 summary(logit_model_trees)
 
-logit_model_trees
+logit_model_trees$finalModel
 
 # Predict Probabilities
 logit_model_trees_probabilities <- predict(logit_model_trees,
@@ -1735,9 +1787,12 @@ logit_model_trees_predictions <- predict(logit_model_trees,
                                          type = "raw", newdata = testing_data)
 
 # Classification report
-confusionMatrix(logit_model_trees_predictions, testing_data$credit_risk, positive = "Bad")
+confusionMatrix(logit_model_trees_predictions,
+                testing_data$credit_risk,
+                positive = "Bad")
 
-caret_models_df
+
+
 ##############################################################################
 #################  Conditional Inference Tree (mincriterion) #################
 ##############################################################################
@@ -1770,6 +1825,8 @@ ctree_model$finalModel
 
 plot(ctree_model$finalModel)
 
+ctree_model$finalModel
+
 # Predict Probabilities
 ctree_model_probabilities <- predict(ctree_model,
                                      type = "prob", newdata = testing_data)
@@ -1782,10 +1839,9 @@ ctree_model_predictions <- predict(ctree_model,
 confusionMatrix(ctree_model_predictions, testing_data$credit_risk, positive = "Bad")
 
 
-
-##########################
-
-
+#######################################################################################################
+#################  CART - Classification and Regression Trees (rpart - complexity parameter) ##########
+#######################################################################################################
 
 # Repeated 10 fold  cross-validation
 set.seed(123)
@@ -1796,35 +1852,64 @@ fit_control <- trainControl(
   search = "random"
 )
 
-# Baseline logistic model
-logit_model <- caret::train(
+
+#  rpart model
+set.seed(123)
+rpart_model <- caret::train(
   training_data %>% dplyr::select(-credit_risk),
   training_data$credit_risk,
-  method = "treebag",
+  method = "rpart",
   trControl = fit_control
 )
 
-
 # Model Summary
-summary(logit_model)$mtrees[[1]]$btree
-
-library(rattle)
-fancyRpartPlot(summary(logit_model)$mtrees[[1]]$btree)
-
+summary(rpart_model$finalModel)
+rpart_model$finalModel
 
 # Predict Probabilities
-logit_probabilities <- predict(logit_model,
-                               type = "prob", newdata = testing_data)
+rpart_probabilities <- stats::predict(rpart_model,
+                                      type = "prob",
+                                      newdata = testing_data)
 
 # Predict labels
-logit_predictions <- predict(logit_model,
-                             type = "raw", newdata = testing_data)
+rpart_predictions <- stats::predict(rpart_model,
+                                    type = "raw", newdata = testing_data)
 
 # Classification report
-confusionMatrix(logit_predictions, testing_data$credit_risk, positive = "Bad")
+confusionMatrix(rpart_predictions, testing_data$credit_risk, positive = "Bad")
 
 
-formula(logit_model$finalModel)
+#
+saveRDS(rpart_model,
+        "~/Desktop/Shiny_application/application/cart_model.rds")
 
-fancyRpartPlot(logit_model$finalModel)
+
+# Plot Tree
+fancyRpartPlot(rpart_model$finalModel,
+               main = "Classification Tree")
+
+
+#######
+######
+
+
+library(lime)
+
+# explainer
+explainer <- lime(training_data, rpart_model)
+
+# explanation         
+explanation <- explain(x = testing_data[1,],
+                       explainer = explainer,
+                       n_labels = 1,n_features = ncol(testing_data[1,]))
+
+explanation %>% as.data.frame() %>% head(n =1)
+
+
+plot_features(explanation)
+
+###############
+###############
+###############
+
 
