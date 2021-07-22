@@ -144,8 +144,6 @@ credit_data$credit_history <-
 
 
 
-# credit_purpose -  Purpose (qualitative)
-
 credit_data$credit_purpose <-
   if_else(
     credit_data$credit_purpose == "A40",
@@ -601,6 +599,7 @@ plot_hist_plotly <- function(feature_id, title_name) {
 ###############################################
 ############ Univariate Data Analysis #########
 ###############################################
+
 
 plot_bar_plotly("account_balance", "title", "hover")
 plot_bar_plotly("credit_purpose", "title", "hover")
@@ -1581,6 +1580,152 @@ model_selection <-
   }
 
 
+###################################################################
+
+
+#' Title - Tuning rpart model
+#'
+#' @param weight_list 
+#' @param return_type 
+#' @param algorithm 
+#'
+#' @return
+
+
+tuning_rpart <- function(weight_list, return_type,algorithm) {
+  classification_report_list <- list()
+  confusion_matrix_list      <- list()
+  accuracy_list    <- list()
+  true_positives_list   <- list()
+  true_negatives_list   <- list()
+  false_positives_list  <- list()
+  false_negatives_list  <- list()
+  rocr_curve_objs <- list()
+  auc_list <- list()
+  wt_ratio <- list()
+  
+  for (i in weight_list) {
+    set.seed(123)
+    fit_control_wt <- trainControl(
+      method = "repeatedcv",
+      number = 10,
+      repeats = 10,
+      search = "random",
+      verbose = FALSE
+    )
+    
+    weights <- ifelse(training_data$credit_risk == "Good", 1, i)
+    
+    set.seed(123)
+    rpart_model_wt <- caret::train(
+      training_data %>% dplyr::select(-credit_risk),
+      training_data$credit_risk,
+      method = algorithm,
+      trControl = fit_control_wt,
+      weights = weights
+    )
+    
+    model_predictions <- predict(rpart_model_wt,
+                                 newdata = testing_data,
+                                 type = "raw")
+    
+    model_probabilities <-
+      predict(rpart_model_wt,
+              newdata = testing_data,
+              type = "prob")
+    
+    report <- confusionMatrix(model_predictions,
+                              testing_data$credit_risk,
+                              positive = "Bad")
+    classification_report_list <-
+      append(classification_report_list, report)
+    
+    accuracy_list  <-
+      unlist(append(accuracy_list, report$overall[1]))
+    
+    true_positives_list   <-
+      unlist(append(true_positives_list, report$table[4]))
+    true_negatives_list   <-
+      unlist(append(true_negatives_list, report$table[1]))
+    false_positives_list  <-
+      unlist(append(false_positives_list, report$table[3]))
+    false_negatives_list  <-
+      unlist(append(false_negatives_list, report$table[2]))
+    
+    rocr_curves <-
+      roc(testing_data$credit_risk, model_probabilities$Bad)
+    
+    rocr_curve_objs <- append(rocr_curve_objs, list(rocr_curves))
+    
+    auc_list <-
+      unlist(append(
+        auc_list,
+        auc(testing_data$credit_risk, model_probabilities$Bad)
+      ))
+    
+    wt_ratio <- unlist(append(wt_ratio, i))
+  }
+  
+  metrics_data_frame <-
+    data.frame(
+      wt_ratio,
+      accuracy_list,
+      true_positives_list,
+      true_negatives_list,
+      false_positives_list,
+      false_negatives_list,
+      auc_list
+    )
+  
+  colnames(metrics_data_frame) <-
+    c(
+      "Weight",
+      "Accuracy",
+      "True_Positives",
+      "True_Negatives",
+      "False_Positives",
+      "False_Negatives",
+      "AUC"
+    )
+  
+  metrics_data_frame$Weight <-
+    paste("Good : Bad = 1 :", metrics_data_frame$Weight)
+  
+  if (return_type == "confusion matrix") {
+    for (i in seq(2, length(classification_report_list), 6)) {
+      confusion_matrix_list <-
+        append(confusion_matrix_list, classification_report_list[i])
+    }
+    names(confusion_matrix_list) <- wt_ratio
+    return(confusion_matrix_list)
+  } else if (return_type == "metrics dataframe") {
+    return(metrics_data_frame)
+  } else if (return_type == "ROC curve") {
+    names(rocr_curve_objs) <- metrics_data_frame$Weight
+    rocr_plot <-
+      ggroc(
+        rocr_curve_objs,
+        legacy.axes = FALSE,
+        linetype = 1,
+        size = .3
+      ) +
+      labs(color = 'Model') + ggtitle("ROC Curve")  +
+      geom_segment(aes(
+        x = 1,
+        xend = 0,
+        y = 0,
+        yend = 1
+      ),
+      color = "grey",
+      linetype = "dashed")
+    
+    rocr_plot <- ggplotly(rocr_plot)
+    
+    return(rocr_plot)
+  }
+}
+
+
 '''
 confusion_matrix_dat <-
   model_selection(
@@ -1733,7 +1878,9 @@ confusionMatrix(logit_model_update_predictions,
                 positive = "Bad")
 
 
-logit_model_update$finalModel
+
+saveRDS(logit_model,
+        "~/Desktop/Shiny_application/application/logistic_regression_model.rds")
 
 
 ##########################################################
@@ -1769,7 +1916,6 @@ logit_model_trees <- caret::train(
 )
 
 
-
 logit_model_trees$finalModel
 summary(logit_model_trees)
 
@@ -1790,8 +1936,6 @@ logit_model_trees_predictions <- predict(logit_model_trees,
 confusionMatrix(logit_model_trees_predictions,
                 testing_data$credit_risk,
                 positive = "Bad")
-
-
 
 ##############################################################################
 #################  Conditional Inference Tree (mincriterion) #################
@@ -1862,9 +2006,13 @@ rpart_model <- caret::train(
   trControl = fit_control
 )
 
+
 # Model Summary
 summary(rpart_model$finalModel)
-rpart_model$finalModel
+rpart_model
+
+# plot complexity parameter
+plot(rpart_model, plotType = "line")
 
 # Predict Probabilities
 rpart_probabilities <- stats::predict(rpart_model,
@@ -1878,25 +2026,79 @@ rpart_predictions <- stats::predict(rpart_model,
 # Classification report
 confusionMatrix(rpart_predictions, testing_data$credit_risk, positive = "Bad")
 
-
-#
-saveRDS(rpart_model,
-        "~/Desktop/Shiny_application/application/cart_model.rds")
-
-
 # Plot Tree
 fancyRpartPlot(rpart_model$finalModel,
                main = "Classification Tree")
 
 
-#######
-######
 
+#################################################################################################
+#### Final model CART - Classification and Regression Trees (rpart - complexity parameter) ##
+#################################################################################################
+
+# Select optimal weight ratio
+weight_df <- tuning_rpart(seq(1,2,0.1),return_type = "metrics dataframe","rpart")
+weight_df
+
+# Repeated 10 fold  cross-validation
+set.seed(123)
+fit_control_tuned <- trainControl(
+  method = "repeatedcv",
+  number = 10,
+  repeats = 5,
+  search = "random"
+)
+
+# Set weight ratio
+weight_ratio <- ifelse(training_data$credit_risk == "Good",1,1.8)
+
+#  rpart model
+set.seed(123)
+rpart_model_tuned <- caret::train(
+  training_data %>% dplyr::select(-credit_risk),
+  training_data$credit_risk,
+  method = "rpart",
+  trControl = fit_control_tuned,
+  weights = weight_ratio
+)
+
+rpart_model_tuned$finalModel
+
+# Model Summary
+summary(rpart_model_tuned$finalModel)
+
+
+# plot complexity parameter
+plot(rpart_model_tuned, plotType = "line")
+
+# Predict Probabilities
+rpart_probabilities_tuned <- stats::predict(rpart_model_tuned,
+                                            type = "prob",
+                                            newdata = testing_data)
+
+# Predict labels
+rpart_predictions_tuned <- stats::predict(rpart_model_tuned,
+                                          type = "raw", newdata = testing_data)
+
+# Classification report
+confusionMatrix(rpart_predictions_tuned, testing_data$credit_risk, positive = "Bad")
+
+
+# Plot Tree
+fancyRpartPlot(rpart_model_tuned$finalModel,
+               main = "Classification Tree")
+
+# 
+saveRDS(rpart_model_tuned,
+        "~/Desktop/Shiny_application/application/cart_model.rds")
+
+#######
 
 library(lime)
 
+
 # explainer
-explainer <- lime(training_data, rpart_model)
+explainer <- lime(training_data, rpart_model_tuned)
 
 # explanation         
 explanation <- explain(x = testing_data[1,],
@@ -1908,8 +2110,5 @@ explanation %>% as.data.frame() %>% head(n =1)
 
 plot_features(explanation)
 
-###############
-###############
-###############
 
 

@@ -1,25 +1,27 @@
 ######## Setting working directory
-#setwd("~/Desktop/Shiny_application/application")
-
+setwd("~/Desktop/Shiny_application/application")
 
 #####################################
 ######## Importing Libraries ########
 ######################################
 
-library(dplyr)        # Data Manipulation
-library(shiny)
-library(shinydashboard)
-library(shinyWidgets)
-library(dashboardthemes)
-library(stringr)      # String Manipulation
-library(tools)        # String Manipulation
-library(data.table)
-library(janitor)
-library(reshape2)
-library(highcharter)
-library(lime)
-library(caret)
-library(stats)
+library(dplyr)           # Data Manipulation
+library(shiny)           # Shiny application
+library(shinydashboard)  # Shiny dashboard
+library(shinyWidgets)    # Shiny Widgets
+library(dashboardthemes) # Shiny dashboard themes
+library(stringr)         # String Manipulation
+library(tools)           # String Manipulation
+library(data.table)      # Data Manipulation
+library(janitor)         # Data Manipulation
+library(reshape2)        # Data Manipulation
+library(highcharter)     # Data Visualization
+library(lime)            # Explaining Machine learning
+library(caret)           # Machine learning
+library(stats)           # Machine learning
+library(shinycssloaders) # Loading widget
+library(spsComps)        # Tooltip elements
+library(cicerone)        # Guided tour of Shiny application
 
 
 ###########################################
@@ -35,9 +37,14 @@ training_data <- readRDS("training_data.rds")
 # Testing data
 testing_data <- readRDS("testing_data.rds")
 
+# Cart Model
 cart_model <- readRDS("cart_model.rds")
 
+# Logistic regression baseleine
 sample_model <- readRDS("sample_model.rds") 
+
+# Logistic regression
+logit_model  <- readRDS("logistic_regression_model.rds") 
 
 #########################################
 ############ Data Manipulation  #########
@@ -193,10 +200,28 @@ radio_creator <- function(features) {
 
 radio_widget_list <- radio_creator(radio_button_columns)
 
+# Cicerone Guide
+guide <- Cicerone$
+  new()$ 
+  step(
+    el = "account_balance_id",
+    title = "Feature Selection",
+    description = "This is where you select relevent option for the features."
+  )$ 
+  step(
+    el = "submit_button_id",
+    title = "Submit",
+    description = "This is where you submit your information for processing."
+  )
+
 
 
 # Server
 server <- function(input, output, session) {
+  
+  guide$init()$start()
+  session$onSessionEnded(stopApp)
+  
   data_set_input <- reactive({
     
     df <- data.frame(
@@ -448,16 +473,36 @@ server <- function(input, output, session) {
   
   output$bar_plot <- renderHighchart({
     if (input$submit_button_id  > 1) {
+      input$submit_button_id
+      Sys.sleep(1)
       explanation_plot_df() %>%
         hchart(
-          'bar', hcaes(x = statement, y = feature_weight,group = statement_type),
-          borderColor = "black"
-        )
+          'bar', hcaes(x = toTitleCase(str_replace_all(feature,"_"," ")), y = feature_weight,
+                       group = statement_type,
+                       opacity =.6),
+          borderColor = "black",
+          tooltip = list(pointFormat = "{point.statement}",
+                         headerFormat = "<br> <b> Reason : <b> <br> ")
+        ) %>% 
+        hc_title(
+          text = "Factors influencing application",
+          margin = 20,
+          align = "center",
+          style = list(color = "black")
+        ) %>% 
+        hc_colors(c("green","red")) %>% 
+        hc_yAxis(title = list(text = "Estimated weight from the predictive model")) %>% 
+        hc_xAxis(title = list(text = "Feature")) %>% hc_legend(
+          layout =  'vertical',
+          align =  'right',
+          verticalAlign =  'middle')
     }
   })
   
   output$pie_plot <- renderHighchart({
     if (input$submit_button_id  > 1) {
+      input$submit_button_id
+      Sys.sleep(1)
       data_set_probabilities() %>%
         hchart("pie",
                hcaes(x = approval, y = value,opacity =.6),
@@ -508,7 +553,7 @@ server <- function(input, output, session) {
 # Header
 header <- dashboardHeader(
   title = shinyDashboardLogoDIY(
-    boldText = "Dashboard",
+    boldText = "Application",
     mainText = "credit risk",
     textSize = 16,
     badgeText = "V1",
@@ -520,7 +565,7 @@ header <- dashboardHeader(
 )
 
 
-
+# UI customisation
 tag_widget_height <- tags$style(".choosechannel .btn   {height: 15.5px; padding: 0px;
                                 font-size : 10px;}")
 
@@ -529,30 +574,90 @@ tag_margin_outter <-  tags$style(".choosechannel {margin-bottom: -.35em;margin-t
                                   font: normal normal 0.8em 'Arial'; 
                                  font-weight: normal; }")
 
+# Widgets with Tool tips 
+account_balance_tool <- picker_widget_list$account_balance %>%
+  bsTooltip("Text", "right")
+
+credit_history_tool  <- picker_widget_list$credit_history %>%
+  bsTooltip("Text", "right")
+
+credit_amount_tool   <- slider_widget_list$credit_amount %>%
+  bsTooltip("Text", "right")
+
+existing_credits_current_bank_tool <- radio_widget_list$existing_credits_current_bank %>%
+  bsTooltip("Text", "right")
+
+credit_purpose_tool  <- picker_widget_list$credit_purpose %>%
+  bsTooltip("Text", "right")
+
+savings_account_bonds_tool <- picker_widget_list$savings_account_bonds %>%
+  bsTooltip("Text", "right")
+
+month_duration_tool <- slider_widget_list$month_duration %>%
+  bsTooltip("Text", "right")
+
+foreign_worker_tool <- picker_widget_list$foreign_worker %>%
+  bsTooltip("Text", "right")
+
+job_status_tool <- picker_widget_list$job_status %>%
+  bsTooltip("Text", "right")
+
+employment_history_tool <- picker_widget_list$employment_history %>%
+  bsTooltip("Text", "right")
+
+other_installment_plans_tool <- picker_widget_list$other_installment_plans %>%
+  bsTooltip("Text", "right")
+
+installment_percent_disposable_income_tool <- radio_widget_list$installment_percent_disposable_income %>%
+  bsTooltip("Text", "right")
+
+marital_status_sex_tool <- picker_widget_list$marital_status_sex %>%
+  bsTooltip("Text", "right")
+
+age_years_tool <- slider_widget_list$age_years %>%
+  bsTooltip("Text", "right")
+
+property_type_tool <- picker_widget_list$property_type %>%
+  bsTooltip("Text", "right")
+
+housing_type_tool <- picker_widget_list$housing_type %>%
+  bsTooltip("Text", "right")
+
+residence_history_years_tool <- radio_widget_list$residence_history_years %>%
+  bsTooltip("Text", "right")
+
+telephone_status_tool <- picker_widget_list$telephone_status %>%
+  bsTooltip("Text", "right")
+
+debtors_guarantor_status_tool <- picker_widget_list$debtors_guarantor_status %>%
+  bsTooltip("Text", "right")
+
+people_liable_maintainance_tool <- radio_widget_list$people_liable_maintainance %>%
+  bsTooltip("Text", "right")
 
 # Side Bar
 sidebar <- dashboardSidebar(width = 430,
                             collapsed = FALSE,
-                            fluidRow(column(width = 6,align = "center",tag_margin_outter,tag_widget_height,picker_widget_list$account_balance),
-                                     column(width = 6,align = "center",picker_widget_list$credit_history)),
-                            fluidRow(column(width = 6,align = "center",tag_widget_height,slider_widget_list$credit_amount),
-                                     column(width = 6,align = "center",radio_widget_list$existing_credits_current_bank)),
-                            fluidRow(column(width = 6,align = "center",picker_widget_list$credit_purpose),
-                                     column(width = 6,align = "center",picker_widget_list$savings_account_bonds)),
-                            fluidRow(column(width = 6,align = "center",slider_widget_list$month_duration),
-                                     column(width = 6,align = "center",picker_widget_list$foreign_worker)),
-                            fluidRow(column(width = 6,align = "center",picker_widget_list$job_status),
-                                     column(width = 6,align = "center",picker_widget_list$employment_history)),
-                            fluidRow(column(width = 6,align = "center",picker_widget_list$other_installment_plans),
-                                     column(width = 6,align = "center",radio_widget_list$installment_percent_disposable_income)),
-                            fluidRow(column(width = 6,align = "center",picker_widget_list$marital_status_sex),
-                                     column(width = 6,align = "center",slider_widget_list$age_years)),
-                            fluidRow(column(width = 6,align = "center",picker_widget_list$property_type),
-                                     column(width = 6,align = "center",picker_widget_list$housing_type)),
-                            fluidRow(column(width = 6,align = "center",radio_widget_list$residence_history_years),
-                                     column(width = 6,align = "center",picker_widget_list$telephone_status)),
-                            fluidRow(column(width = 6,align = "center",picker_widget_list$debtors_guarantor_status),
-                                     column(width = 6,align = "center",radio_widget_list$people_liable_maintainance)),
+                            fluidRow(column(width = 6,align = "center",tag_margin_outter,tag_widget_height,account_balance_tool),
+                                     column(width = 6,align = "center",credit_history_tool)),
+                            fluidRow(column(width = 6,align = "center",credit_amount_tool),
+                                     column(width = 6,align = "center",existing_credits_current_bank_tool)),
+                            fluidRow(column(width = 6,align = "center",credit_purpose_tool),
+                                     column(width = 6,align = "center",savings_account_bonds_tool)),
+                            fluidRow(column(width = 6,align = "center",month_duration_tool),
+                                     column(width = 6,align = "center",foreign_worker_tool)),
+                            fluidRow(column(width = 6,align = "center",job_status_tool),
+                                     column(width = 6,align = "center",employment_history_tool)),
+                            fluidRow(column(width = 6,align = "center",other_installment_plans_tool),
+                                     column(width = 6,align = "center",installment_percent_disposable_income_tool)),
+                            fluidRow(column(width = 6,align = "center",marital_status_sex_tool),
+                                     column(width = 6,align = "center",age_years_tool)),
+                            fluidRow(column(width = 6,align = "center",property_type_tool),
+                                     column(width = 6,align = "center",housing_type_tool)),
+                            fluidRow(column(width = 6,align = "center",residence_history_years_tool),
+                                     column(width = 6,align = "center",telephone_status_tool)),
+                            fluidRow(column(width = 6,align = "center",debtors_guarantor_status_tool),
+                                     column(width = 6,align = "center",people_liable_maintainance_tool)),
                             fluidRow(column(width = 12,actionBttn(inputId = "submit_button_id",
                                                                   label = "Submit",
                                                                   style = "pill",
@@ -564,20 +669,17 @@ sidebar <- dashboardSidebar(width = 430,
 
 # Body
 body <-
-  dashboardBody(#tags$style(HTML('body {font-family:"Georgia",Times,"Times New Roman",serif;font-size : 14px;background-color:lightblue}')),
+  dashboardBody(
     tabsetPanel(
       tabPanel(
-        highchartOutput("pie_plot"),
-        highchartOutput("bar_plot"),
-        #dataTableOutput("table"),
-        title = "Credit Risk",
-        icon = icon("credit-card", lib = "glyphicon")
-      ),
-      tabPanel(tags$div(
-        HTML(
-          "<script>
+        fluidRow(width = 12,
+                 align = "center", shinycssloaders::withSpinner(highchartOutput("pie_plot"))),
+        fluidRow(width = 12,align = "center", shinycssloaders::withSpinner(highchartOutput("bar_plot"))),
+        tags$div(
+          HTML(
+            "<script>
   window.watsonAssistantChatOptions = {
-      integrationID: '8864b77b-49da-48f9-a228-f9c6a045e03d', // The ID of this integration.
+      integrationID: '46e61663-4c24-4f89-b808-fd1d6d4701ab', // The ID of this integration.
       region: 'eu-gb', // The region your integration is hosted in.
       serviceInstanceID: '426256b5-a80f-4fbc-bbf6-fccc0f2ee3c3', // The ID of your service instance.
       onLoad: function(instance) { instance.render(); }
@@ -588,12 +690,19 @@ body <-
     document.head.appendChild(t);
   });
 </script>"
-        )
+          )
+        ),
+        title = "Credit Risk",
+        icon = icon("credit-card", lib = "glyphicon")
       ),
-      title = "Chatbot",
-      icon = icon("envelope", lib = "glyphicon")), 
       tabPanel(
-        title = " Documentaion",
+        tags$h3("Participant Information Sheet",style="color:black"),
+        HTML("<p> For the Participant Information Sheet <a href='https://drive.google.com/file/d/164lM38RM7sEaxGc6ce8c6Rwg5zdS5Bpj/view?usp=sharing'> Click here </a>!</p>"),
+        tags$h3("Online Survey",style="color:black"),
+        HTML("<p> To take an online survey <a href='https://drive.google.com/file/d/164lM38RM7sEaxGc6ce8c6Rwg5zdS5Bpj/view?usp=sharing'> Click here </a>!</p>"),
+        tags$h3("Online Consent Form ",style="color:black"),
+        HTML("<p> For the Online Consent Form <a href='https://drive.google.com/file/d/164lM38RM7sEaxGc6ce8c6Rwg5zdS5Bpj/view?usp=sharing'> Click here </a>!</p>"),
+        title = "Documentation",
         icon = icon("folder-open", lib = "glyphicon")
       )
     )
@@ -603,6 +712,7 @@ body <-
 
 # User Interface
 ui <- dashboardPage(
+  use_cicerone(),
   #skin = "green",
   header = header,
   sidebar = sidebar,
@@ -614,8 +724,5 @@ ui <- dashboardPage(
 shinyApp(ui = ui, server = server)
 
 
-library(bubblyr)
 
-#######
-# conver rad to num
 
