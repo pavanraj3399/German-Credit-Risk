@@ -576,64 +576,64 @@ tag_margin_outter <-  tags$style(".choosechannel {margin-bottom: -.35em;margin-t
 
 # Widgets with Tool tips 
 account_balance_tool <- picker_widget_list$account_balance %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Status of existing checking account", "right")
 
 credit_history_tool  <- picker_widget_list$credit_history %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Credit history", "right")
 
 credit_amount_tool   <- slider_widget_list$credit_amount %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Amount required for Credit", "right")
 
 existing_credits_current_bank_tool <- radio_widget_list$existing_credits_current_bank %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Number of existing credits at this bank", "right")
 
 credit_purpose_tool  <- picker_widget_list$credit_purpose %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Purpose for the credit", "right")
 
 savings_account_bonds_tool <- picker_widget_list$savings_account_bonds %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Savings / Bonds in your account", "right")
 
 month_duration_tool <- slider_widget_list$month_duration %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Duration for the credit in month", "right")
 
 foreign_worker_tool <- picker_widget_list$foreign_worker %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Foreign worker status", "right")
 
 job_status_tool <- picker_widget_list$job_status %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Current job status", "right")
 
 employment_history_tool <- picker_widget_list$employment_history %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Present employment since", "right")
 
 other_installment_plans_tool <- picker_widget_list$other_installment_plans %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Other installment plans", "right")
 
 installment_percent_disposable_income_tool <- radio_widget_list$installment_percent_disposable_income %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Installment rate in percentage of disposable income", "right")
 
 marital_status_sex_tool <- picker_widget_list$marital_status_sex %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Marital status and sex", "right")
 
 age_years_tool <- slider_widget_list$age_years %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Age in years", "right")
 
 property_type_tool <- picker_widget_list$property_type %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Category of the property you own", "right")
 
 housing_type_tool <- picker_widget_list$housing_type %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Present housing type", "right")
 
 residence_history_years_tool <- radio_widget_list$residence_history_years %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Present residence since", "right")
 
 telephone_status_tool <- picker_widget_list$telephone_status %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Telephone status", "right")
 
 debtors_guarantor_status_tool <- picker_widget_list$debtors_guarantor_status %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Other debtors/guarantors for the credit", "right")
 
 people_liable_maintainance_tool <- radio_widget_list$people_liable_maintainance %>%
-  bsTooltip("Text", "right")
+  bsTooltip("Number of people being liable to provide maintenance for the credit", "right")
 
 # Side Bar
 sidebar <- dashboardSidebar(width = 430,
@@ -679,7 +679,7 @@ body <-
           HTML(
             "<script>
   window.watsonAssistantChatOptions = {
-      integrationID: '46e61663-4c24-4f89-b808-fd1d6d4701ab', // The ID of this integration.
+      integrationID: 'ac81a7e7-b6e9-49d3-9568-cf4595b31aed', // The ID of this integration.
       region: 'eu-gb', // The region your integration is hosted in.
       serviceInstanceID: '426256b5-a80f-4fbc-bbf6-fccc0f2ee3c3', // The ID of your service instance.
       onLoad: function(instance) { instance.render(); }
