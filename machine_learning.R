@@ -1616,6 +1616,7 @@ tuning_rpart <- function(weight_list, return_type,algorithm) {
     
     weights <- ifelse(training_data$credit_risk == "Good", 1, i)
     
+    
     set.seed(123)
     rpart_model_wt <- caret::train(
       training_data %>% dplyr::select(-credit_risk),
@@ -1637,6 +1638,7 @@ tuning_rpart <- function(weight_list, return_type,algorithm) {
     report <- confusionMatrix(model_predictions,
                               testing_data$credit_risk,
                               positive = "Bad")
+    
     classification_report_list <-
       append(classification_report_list, report)
     
@@ -1724,6 +1726,7 @@ tuning_rpart <- function(weight_list, return_type,algorithm) {
     return(rocr_plot)
   }
 }
+
 
 
 '''
@@ -1827,6 +1830,7 @@ saveRDS(logit_model,
 ##########################################################
 #################  Logistic model Update #################
 ##########################################################
+
 
 
 # Repeated 10 fold  cross-validation
@@ -2036,16 +2040,23 @@ fancyRpartPlot(rpart_model$finalModel,
 #### Final model CART - Classification and Regression Trees (rpart - complexity parameter) ##
 #################################################################################################
 
+
+
 # Select optimal weight ratio
 weight_df <- tuning_rpart(seq(1,2,0.1),return_type = "metrics dataframe","rpart")
 weight_df
+
+# selct model
+roc_rpart_select <- tuning_rpart(c(1,1.8),return_type = "ROC curve","rpart")
+roc_rpart_select
+
 
 # Repeated 10 fold  cross-validation
 set.seed(123)
 fit_control_tuned <- trainControl(
   method = "repeatedcv",
   number = 10,
-  repeats = 5,
+  repeats = 10,
   search = "random"
 )
 

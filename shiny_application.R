@@ -576,13 +576,13 @@ tag_margin_outter <-  tags$style(".choosechannel {margin-bottom: -.35em;margin-t
 
 # Widgets with Tool tips 
 account_balance_tool <- picker_widget_list$account_balance %>%
-  bsTooltip("Status of existing checking account", "right")
+  bsTooltip("Status of existing checking account in Deutsche Mark (German currency)", "right")
 
 credit_history_tool  <- picker_widget_list$credit_history %>%
   bsTooltip("Credit history", "right")
 
 credit_amount_tool   <- slider_widget_list$credit_amount %>%
-  bsTooltip("Amount required for Credit", "right")
+  bsTooltip("Amount required for Credit in Deutsche Mark (German currency)", "right")
 
 existing_credits_current_bank_tool <- radio_widget_list$existing_credits_current_bank %>%
   bsTooltip("Number of existing credits at this bank", "right")
@@ -591,7 +591,7 @@ credit_purpose_tool  <- picker_widget_list$credit_purpose %>%
   bsTooltip("Purpose for the credit", "right")
 
 savings_account_bonds_tool <- picker_widget_list$savings_account_bonds %>%
-  bsTooltip("Savings / Bonds in your account", "right")
+  bsTooltip("Savings / Bonds in your account in Deutsche Mark (German currency)", "right")
 
 month_duration_tool <- slider_widget_list$month_duration %>%
   bsTooltip("Duration for the credit in month", "right")
@@ -679,7 +679,7 @@ body <-
           HTML(
             "<script>
   window.watsonAssistantChatOptions = {
-      integrationID: 'ac81a7e7-b6e9-49d3-9568-cf4595b31aed', // The ID of this integration.
+      integrationID: '1e678750-2f0c-4d20-b144-6c93d88447ed', // The ID of this integration.
       region: 'eu-gb', // The region your integration is hosted in.
       serviceInstanceID: '426256b5-a80f-4fbc-bbf6-fccc0f2ee3c3', // The ID of your service instance.
       onLoad: function(instance) { instance.render(); }
@@ -697,11 +697,11 @@ body <-
       ),
       tabPanel(
         tags$h3("Participant Information Sheet",style="color:black"),
-        HTML("<p> For the Participant Information Sheet <a href='https://drive.google.com/file/d/164lM38RM7sEaxGc6ce8c6Rwg5zdS5Bpj/view?usp=sharing'> Click here </a>!</p>"),
+        HTML("<p> For the Participant Information Sheet <a href='https://drive.google.com/file/d/1w6T6iVdJz7JEQSoh-IMzgaHVWa82GvOh/view?usp=sharing'> Click here </a>!</p>"),
         tags$h3("Online Survey",style="color:black"),
-        HTML("<p> To take an online survey <a href='https://drive.google.com/file/d/164lM38RM7sEaxGc6ce8c6Rwg5zdS5Bpj/view?usp=sharing'> Click here </a>!</p>"),
+        HTML("<p> To take an online survey <a href='https://docs.google.com/forms/d/e/1FAIpQLSc8sdRn4HGJrdHHJPOJziApmybCj0XxurcrAV4nLsUAkkuw_g/viewform'> Click here </a>!</p>"),
         tags$h3("Online Consent Form ",style="color:black"),
-        HTML("<p> For the Online Consent Form <a href='https://drive.google.com/file/d/164lM38RM7sEaxGc6ce8c6Rwg5zdS5Bpj/view?usp=sharing'> Click here </a>!</p>"),
+        HTML("<p> For the Online Consent Form <a href='https://drive.google.com/file/d/1Lg1BZIKCP0JcLLqQbYQlRxP4lyAULYaB/view?usp=sharing'> Click here </a>!</p>"),
         title = "Documentation",
         icon = icon("folder-open", lib = "glyphicon")
       )
