@@ -49,56 +49,27 @@ logit_model  <- readRDS("logistic_regression_model.rds")
 # Cart Model with selected features 
 shiny_cart_model <- readRDS("~/Desktop/Shiny_application/application/cart_shiny_model.rds")
 
+
 #########################################
 ############ Data Manipulation  #########
 #########################################
 
 # Create a Features Vector
 feature_names <-
-  c(
-    "account_balance",
-    "month_duration",
-    "credit_history",
-    "credit_purpose",
-    "credit_amount",
-    "savings_account_bonds",
-    "employment_history",
-    "installment_percent_disposable_income",
-    "marital_status_sex",
-    "debtors_guarantor_status",
-    "residence_history_years",
-    "property_type",
-    "age_years",
-    "other_installment_plans",
-    "housing_type",
-    "existing_credits_current_bank",
-    "job_status",
-    "people_liable_maintainance",
-    "telephone_status",
-    "foreign_worker",
+  c(unique(shiny_cart_model$finalModel$frame$var)[!unique(shiny_cart_model$finalModel$frame$var) %in% "<leaf>"],
     "credit_risk"
   )
-
 
 # Subset Numerical Features
 numerical_columns   <-
   c(
     "month_duration",
-    "credit_amount",
-    "installment_percent_disposable_income",
-    "residence_history_years",
-    "age_years",
-    "existing_credits_current_bank",
-    "people_liable_maintainance"
+    "credit_amount"
   )
 
 # Subset Categorical Features
 categorical_columns <-
   feature_names[!feature_names %in% numerical_columns]
-
-# Radio button columns
-radio_button_columns <- c("installment_percent_disposable_income","residence_history_years",
-                          "existing_credits_current_bank","people_liable_maintainance")
 
 
 ###########################################
@@ -173,34 +144,6 @@ slider_creator <- function(features) {
 slider_widget_list <- slider_creator(numerical_columns)
 
 
-
-#' Title - Create Radio button widget for the columns for the user interface.
-#'
-#' @param features - All the features for the widget creation
-#'
-#' @return - return a list of Radio button widgets for the features passed.
-
-
-radio_creator <- function(features) {
-  radio_features <- features
-  
-  radio_list <- list()
-  
-  for (i in radio_features) {
-    radio_widget <- div(class = "choosechannel",awesomeRadio(
-      inputId = paste(i, "_id", sep = ""),
-      label = toTitleCase(str_replace_all(i, "_", " ")),
-      choices = unique(sort(german_credit_data[, i])),
-      inline = TRUE
-    ))
-    radio_list <- append(radio_list,list(radio_widget))
-  }
-  names(radio_list) <- radio_features
-  return(radio_list)
-}
-
-radio_widget_list <- radio_creator(radio_button_columns)
-
 # Cicerone Guide
 guide <- Cicerone$
   new()$ 
@@ -215,7 +158,9 @@ guide <- Cicerone$
     description = "This is where you submit your information for processing."
   )
 
+shiny_features
 
+feature_names
 
 # Server
 server <- function(input, output, session) {
@@ -227,48 +172,29 @@ server <- function(input, output, session) {
     
     df <- data.frame(
       Name = c("account_balance",
-               "credit_history",
-               "credit_amount",
-               "existing_credits_current_bank",
-               "credit_purpose",
-               "savings_account_bonds",
-               "month_duration",
-               "foreign_worker",
-               "job_status",
-               "employment_history",
                "other_installment_plans",
-               "installment_percent_disposable_income",
-               "marital_status_sex",
-               "age_years",
-               "property_type",
-               "housing_type",
-               "residence_history_years",
-               "telephone_status",
+               "credit_purpose",
+               "employment_history",
+               "month_duration",
+               "credit_history",
                "debtors_guarantor_status",
-               "people_liable_maintainance"
+               "credit_amount",
+               "property_type",
+               "savings_account_bonds"
       ),
       Value =  c(input$account_balance_id,
-                 input$credit_history_id,
-                 input$credit_amount_id,
-                 input$existing_credits_current_bank_id,
-                 input$credit_purpose_id,
-                 input$savings_account_bonds_id,
-                 input$month_duration_id,
-                 input$foreign_worker_id,
-                 input$job_status_id,
-                 input$employment_history_id,
                  input$other_installment_plans_id,
-                 input$installment_percent_disposable_income_id,
-                 input$marital_status_sex_id,
-                 input$age_years_id,
-                 input$property_type_id,
-                 input$housing_type_id,
-                 input$residence_history_years_id,
-                 input$telephone_status_id,
+                 input$credit_purpose_id,
+                 input$employment_history_id,
+                 input$month_duration_id,
+                 input$credit_history_id,
                  input$debtors_guarantor_status_id,
-                 input$people_liable_maintainance_id
+                 input$credit_amount_id,
+                 input$property_type_id,
+                 input$savings_account_bonds_id
       )
     )
+    
     testing_input_dataframe <- transpose(df) %>% row_to_names(row_number = 1)
     
     testing_input_dataframe$credit_risk <- 0
@@ -282,13 +208,14 @@ server <- function(input, output, session) {
   
   data_set_predictions <- reactive({
     
-    model_predictions <- stats::predict(sample_model,data_set_input())
+    model_predictions <- stats::predict(shiny_cart_model,data_set_input())
     
     return(model_predictions)
   })
   
+  
   data_set_probabilities <- reactive({
-    model_probabilities_df <- suppressMessages(reshape2::melt(stats::predict(sample_model,
+    model_probabilities_df <- suppressMessages(reshape2::melt(stats::predict(shiny_cart_model,
                                                                              data_set_input(),type = "prob")))
     colnames(model_probabilities_df) <- c("label","value")
     model_probabilities_df$approval <- if_else(model_probabilities_df$label == "Good","Yes","No")
@@ -298,12 +225,11 @@ server <- function(input, output, session) {
   
   
   lime_explainer <- reactive({
-    explainer <- lime(training_data, sample_model)
-    explanation <- lime::explain(data_set_input()[,names(training_data)[!names(training_data) %in% "credit_risk"]],
+    explainer <- lime(training_data %>% dplyr::select(feature_names), shiny_cart_model)
+    explanation <- lime::explain(data_set_input()[,names(training_data %>% dplyr::select(feature_names))[!names(training_data %>% dplyr::select(feature_names)) %in% "credit_risk"]],
                                  explainer = explainer,
                                  n_labels = 2,
                                  n_features = 20)
-    
     explanation <- explanation %>% as.data.frame()
     return(explanation)
   })
@@ -338,8 +264,8 @@ server <- function(input, output, session) {
                                                  c(" = " = " suggests that you have ",
                                                    "_" = " ", "/" = "or"))
     # Features three
-    features_three <- c("employment_history","marital_status_sex",
-                        "housing_type","job_status","credit_purpose",
+    features_three <- c("employment_history",
+                        "housing_type","credit_purpose",
                         "other_installment_plans",
                         "debtors_guarantor_status")
     
@@ -356,31 +282,6 @@ server <- function(input, output, session) {
       )
     )
     
-    # Features four
-    features_four <- c("telephone_status")
-    features_four_df <- explain_df %>% filter(feature %in% features_four)
-    features_four_df$statement <- str_replace_all(
-      features_four_df$feature_desc,
-      c(
-        "telephone_status = Yes / registered under the customers name" =
-          "telephone is registered under your name",
-        "telephone_status = None" =
-          "Dont have telephone or it is not registered under your name"
-      )
-    )
-    
-    # Features five
-    features_five <- c("foreign_worker")
-    features_five_df <- explain_df %>% filter(feature %in% features_five)
-    features_five_df$statement <- str_replace_all(
-      features_five_df$feature_desc,
-      c(
-        "foreign_worker = Yes" = "You are a foreign worker",
-        "foreign_worker = No"  = "You are not a foreign worker"
-      )
-    )
-    
-    # In between df
     
     numerical_df <-  explain_df %>% filter(feature %in% c(numerical_columns))
     
@@ -448,8 +349,6 @@ server <- function(input, output, session) {
     stacked_data <- rbind(features_eight_df,
                           features_seven_df,
                           features_six_df,
-                          features_five_df,
-                          features_four_df,
                           features_three_df,
                           features_two_df,
                           features_one_df)
@@ -534,12 +433,9 @@ server <- function(input, output, session) {
   
   observeEvent(input$submit_button_id,
                if(!isTruthy(input$account_balance_id) | !isTruthy(input$credit_history_id) | 
-                  !isTruthy(input$credit_purpose_id) | !isTruthy(input$savings_account_bonds_id) | 
-                  !isTruthy(input$foreign_worker_id) | !isTruthy(input$job_status_id) |
+                  !isTruthy(input$credit_purpose_id) | !isTruthy(input$savings_account_bonds_id) |
                   !isTruthy(input$employment_history_id) | !isTruthy(input$other_installment_plans_id) | 
-                  !isTruthy(input$marital_status_sex_id) | !isTruthy(input$property_type_id) | 
-                  !isTruthy(input$housing_type_id) | !isTruthy(input$telephone_status_id) |
-                  !isTruthy(input$debtors_guarantor_status_id)
+                  !isTruthy(input$property_type_id) | !isTruthy(input$debtors_guarantor_status_id)
                ) {
                  sendSweetAlert(
                    session = session,
@@ -566,42 +462,25 @@ header <- dashboardHeader(
 )
 
 
-# UI customisation
-tag_widget_height <- tags$style(".choosechannel .btn   {height: 15.5px; padding: 0px;
-                                font-size : 10px;}")
-
-tag_margin_outter <-  tags$style(".choosechannel {margin-bottom: -.35em;margin-top: .7em;
-
-                                  font: normal normal 0.8em 'Arial'; 
-                                 font-weight: normal; }")
-
 # Widgets with Tool tips 
+
 account_balance_tool <- picker_widget_list$account_balance %>%
-  bsTooltip("Status of existing checking account in Euros (€)", "right")
+  bsTooltip("Status of existing checking account in Euros(€)", "right")
 
 credit_history_tool  <- picker_widget_list$credit_history %>%
   bsTooltip("Credit history", "right")
 
 credit_amount_tool   <- slider_widget_list$credit_amount %>%
-  bsTooltip("Amount required for Credit in Euros (€)", "right")
-
-existing_credits_current_bank_tool <- radio_widget_list$existing_credits_current_bank %>%
-  bsTooltip("Number of existing credits at this bank", "right")
+  bsTooltip("Amount required for Credit in Euros(€)", "right")
 
 credit_purpose_tool  <- picker_widget_list$credit_purpose %>%
   bsTooltip("Purpose for the credit", "right")
 
 savings_account_bonds_tool <- picker_widget_list$savings_account_bonds %>%
-  bsTooltip("Savings / Bonds in your account in Euros (€)", "right")
+  bsTooltip("Savings / Bonds in your account in Euros(€)", "right")
 
 month_duration_tool <- slider_widget_list$month_duration %>%
   bsTooltip("Duration for the credit in month", "right")
-
-foreign_worker_tool <- picker_widget_list$foreign_worker %>%
-  bsTooltip("Foreign worker status", "right")
-
-job_status_tool <- picker_widget_list$job_status %>%
-  bsTooltip("Current job status", "right")
 
 employment_history_tool <- picker_widget_list$employment_history %>%
   bsTooltip("Present employment since", "right")
@@ -609,56 +488,35 @@ employment_history_tool <- picker_widget_list$employment_history %>%
 other_installment_plans_tool <- picker_widget_list$other_installment_plans %>%
   bsTooltip("Other installment plans", "right")
 
-installment_percent_disposable_income_tool <- radio_widget_list$installment_percent_disposable_income %>%
-  bsTooltip("Installment rate in percentage of disposable income", "right")
-
-marital_status_sex_tool <- picker_widget_list$marital_status_sex %>%
-  bsTooltip("Marital status and sex", "right")
-
-age_years_tool <- slider_widget_list$age_years %>%
-  bsTooltip("Age in years", "right")
-
 property_type_tool <- picker_widget_list$property_type %>%
   bsTooltip("Category of the property you own", "right")
-
-housing_type_tool <- picker_widget_list$housing_type %>%
-  bsTooltip("Present housing type", "right")
-
-residence_history_years_tool <- radio_widget_list$residence_history_years %>%
-  bsTooltip("Present residence since", "right")
-
-telephone_status_tool <- picker_widget_list$telephone_status %>%
-  bsTooltip("Telephone status", "right")
 
 debtors_guarantor_status_tool <- picker_widget_list$debtors_guarantor_status %>%
   bsTooltip("Other debtors/guarantors for the credit", "right")
 
-people_liable_maintainance_tool <- radio_widget_list$people_liable_maintainance %>%
-  bsTooltip("Number of people being liable to provide maintenance for the credit", "right")
+# UI customisation
+tag_widget_height <- tags$style(".choosechannel .btn   {height: 15.5px; padding: 0px;
+                                font-size : 10px;}")
+
+tag_margin_outter <-  tags$style(".choosechannel {margin-bottom: -.35em;margin-top: .7em;
+                                  font: normal normal 0.8em 'Arial'; 
+                                 font-weight: normal; }")
+
+
 
 # Side Bar
-sidebar <- dashboardSidebar(width = 430,
+sidebar <- dashboardSidebar(width = 250,
                             collapsed = FALSE,
-                            fluidRow(column(width = 6,align = "center",tag_margin_outter,tag_widget_height,account_balance_tool),
-                                     column(width = 6,align = "center",credit_history_tool)),
-                            fluidRow(column(width = 6,align = "center",credit_amount_tool),
-                                     column(width = 6,align = "center",existing_credits_current_bank_tool)),
-                            fluidRow(column(width = 6,align = "center",credit_purpose_tool),
-                                     column(width = 6,align = "center",savings_account_bonds_tool)),
-                            fluidRow(column(width = 6,align = "center",month_duration_tool),
-                                     column(width = 6,align = "center",foreign_worker_tool)),
-                            fluidRow(column(width = 6,align = "center",job_status_tool),
-                                     column(width = 6,align = "center",employment_history_tool)),
-                            fluidRow(column(width = 6,align = "center",other_installment_plans_tool),
-                                     column(width = 6,align = "center",installment_percent_disposable_income_tool)),
-                            fluidRow(column(width = 6,align = "center",marital_status_sex_tool),
-                                     column(width = 6,align = "center",age_years_tool)),
-                            fluidRow(column(width = 6,align = "center",property_type_tool),
-                                     column(width = 6,align = "center",housing_type_tool)),
-                            fluidRow(column(width = 6,align = "center",residence_history_years_tool),
-                                     column(width = 6,align = "center",telephone_status_tool)),
-                            fluidRow(column(width = 6,align = "center",debtors_guarantor_status_tool),
-                                     column(width = 6,align = "center",people_liable_maintainance_tool)),
+                            tag_margin_outter,tag_widget_height,account_balance_tool,
+                            credit_history_tool,
+                            credit_amount_tool,
+                            credit_purpose_tool,
+                            month_duration_tool,
+                            employment_history_tool,
+                            debtors_guarantor_status_tool,
+                            property_type_tool,
+                            savings_account_bonds_tool,
+                            other_installment_plans_tool,
                             fluidRow(column(width = 12,actionBttn(inputId = "submit_button_id",
                                                                   label = "Submit",
                                                                   style = "pill",

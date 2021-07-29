@@ -108,13 +108,13 @@ categorical_columns <-
 credit_data$account_balance <-
   ifelse(
     credit_data$account_balance == "A11",
-    "Less than 0 DM",
+    "Less than 0 Euros (€)",
     if_else(
       credit_data$account_balance == "A12",
-      "Between 0 and  200 DM",
+      "Between 0 and  200 Euros (€)",
       if_else(
         credit_data$account_balance == "A13",
-        "Greater than or equal to  200 DM",
+        "Greater than or equal to  200 Euros (€)",
         "No checking account"
       )
     )
@@ -190,16 +190,16 @@ credit_data$credit_purpose <-
 credit_data$savings_account_bonds <-
   if_else(
     credit_data$savings_account_bonds == "A61",
-    "Less than 100 DM",
+    "Less than 100 Euros (€)",
     if_else(
       credit_data$savings_account_bonds == "A62",
-      "Between 100 and 500 DM",
+      "Between 100 and 500 Euros (€)",
       if_else(
         credit_data$savings_account_bonds == "A63",
-        "Between 500 and 1000 DM",
+        "Between 500 and 1000 Euros (€)",
         if_else(
           credit_data$savings_account_bonds == "A64",
-          "Greater than or equal to 1000 DM",
+          "Greater than or equal to 1000 Euros (€)",
           "Unknown / no known savings"
         )
       )
@@ -374,9 +374,9 @@ credit_data$account_balance <-
   factor(
     credit_data$account_balance,
     labels = c(
-      "Less than 0 DM",
-      "Between 0 and  200 DM",
-      "Greater than or equal to  200 DM",
+      "Less than 0 Euros (€)",
+      "Between 0 and  200 Euros (€)",
+      "Greater than or equal to  200 Euros (€)",
       "No checking account"
     )
   )
@@ -387,10 +387,10 @@ credit_data$savings_account_bonds <-
   factor(
     credit_data$savings_account_bonds,
     labels = c(
-      "Less than 100 DM",
-      "Between 100 and 500 DM",
-      "Between 500 and 1000 DM",
-      "Greater than or equal to 1000 DM",
+      "Less than 100 Euros (€)",
+      "Between 100 and 500 Euros (€)",
+      "Between 500 and 1000 Euros (€)",
+      "Greater than or equal to 1000 Euros (€)",
       "Unknown / no known savings"
     )
   )
@@ -1729,7 +1729,6 @@ tuning_rpart <- function(weight_list, return_type,algorithm) {
 
 
 
-'''
 confusion_matrix_dat <-
   model_selection(
     caret_models_df$method,
@@ -1760,9 +1759,9 @@ saveRDS(rocr_plot_plotly,"~/Desktop/Shiny_application/files_generated/roc_curves
 confusion_matrix_dat
 
 suppressWarnings(lapply(confusion_matrix_dat,
-       function(x) write.table( data.frame(x),
-                                "~/Desktop/Shiny_application/files_generated/confusion_matrices.txt",
-                                append= T, sep= "," )))
+                        function(x) write.table( data.frame(x),
+                                                 "~/Desktop/Shiny_application/files_generated/confusion_matrices.txt",
+                                                 append= T, sep= "," )))
 
 saveRDS(confusion_matrix_dat,"~/Desktop/Shiny_application/files_generated/confusion_matrices.rds")
 
@@ -1770,7 +1769,8 @@ saveRDS(confusion_matrix_dat,"~/Desktop/Shiny_application/files_generated/confus
 metrics_df
 write.csv(metrics_df,"~/Desktop/Shiny_application/files_generated/model_metrics.csv")
 saveRDS(metrics_df,"~/Desktop/Shiny_application/files_generated/model_metrics.rds")
-'''
+
+
 
 # ROC curves
 roc_curves_rds  <-
@@ -1871,6 +1871,7 @@ formula(logit_model_update$finalModel)
 # Predict Probabilities
 logit_model_update_probabilities <- predict(logit_model_update,
                                             type = "prob", newdata = testing_data)
+
 
 # Predict labels
 logit_model_update_predictions <- predict(logit_model_update,
@@ -2035,9 +2036,8 @@ fancyRpartPlot(rpart_model$finalModel,
                main = "Classification Tree")
 
 
-
 #################################################################################################
-#### Final model CART - Classification and Regression Trees (rpart - complexity parameter) ##
+#### Final model CART - Classification and Regression Trees (rpart - complexity parameter) ######
 #################################################################################################
 
 
@@ -2099,25 +2099,86 @@ confusionMatrix(rpart_predictions_tuned, testing_data$credit_risk, positive = "B
 fancyRpartPlot(rpart_model_tuned$finalModel,
                main = "Classification Tree")
 
-# 
+# Model on subset features
+
+# Subset features 
+shiny_features <- unique(rpart_model_tuned$finalModel$frame$var)[!unique(rpart_model_tuned$finalModel$frame$var) %in% "<leaf>"]
+
+# Repeated 10 fold  cross-validation
+set.seed(123)
+fit_control_shiny_dt <- trainControl(
+  method = "repeatedcv",
+  number = 10,
+  repeats = 10,
+  search = "random"
+)
+
+# Set weight ratio
+weight_ratio <- ifelse(training_data$credit_risk == "Good",1,1.8)
+
+#  rpart model
+set.seed(123)
+rpart_model_shiny_dt <- caret::train(
+  training_data %>% dplyr::select(all_of(shiny_features)),
+  training_data$credit_risk,
+  method = "rpart",
+  trControl = fit_control_shiny_dt,
+  weights = weight_ratio,
+  tuneLength = 10
+)
+
+# plot complexity parameter
+plot(rpart_model_shiny_dt, plotType = "line")
+
+# Predict Probabilities
+rpart_probabilities_shiny_dt <- stats::predict(rpart_model_shiny_dt,
+                                               type = "prob",
+                                               newdata = testing_data %>% dplyr::select(all_of(shiny_features)))
+
+rpart_probabilities_shiny_dt %>% head()
+
+
+# Predict labels
+rpart_predictions_shiny_dt <- stats::predict(rpart_model_shiny_dt,
+                                             type = "raw", newdata = testing_data %>% dplyr::select(all_of(shiny_features)))
+
+# Classification report
+confusionMatrix(rpart_predictions_shiny_dt, testing_data$credit_risk, positive = "Bad")
+
+# Plot Tree
+fancyRpartPlot(rpart_model_shiny_dt$finalModel,
+               main = "Classification Tree")
+
+
+
+####################################
 saveRDS(rpart_model_tuned,
         "~/Desktop/Shiny_application/application/cart_model.rds")
+
+saveRDS(rpart_model_shiny_dt,
+        "~/Desktop/Shiny_application/application/cart_shiny_model.rds")
+####################################
+
 
 #######
 
 library(lime)
 
+shiny_features
 
 # explainer
-explainer <- lime(training_data, rpart_model_tuned)
+explainer <- lime(training_data %>% dplyr::select(all_of(shiny_features)), rpart_model_shiny_dt)
+
+testing_data[1,shiny_features]
 
 # explanation         
-explanation <- explain(x = testing_data[1,],
+explanation <- explain(x = testing_data[1,shiny_features],
                        explainer = explainer,
-                       n_labels = 1,n_features = ncol(testing_data[1,]))
+                       n_labels = 1,n_features = ncol(testing_data[1,]) + 10)
 
 explanation %>% as.data.frame() %>% head(n =1)
 
-
 plot_features(explanation)
+
+#######
 
