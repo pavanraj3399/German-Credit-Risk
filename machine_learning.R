@@ -18,7 +18,6 @@ library(gdata)        #
 library(rattle)       # Plot CART
 
 
-
 ###########################################
 ############ Importing Dataset ############
 ###########################################
@@ -1727,7 +1726,7 @@ tuning_rpart <- function(weight_list, return_type,algorithm) {
   }
 }
 
-
+'''
 
 confusion_matrix_dat <-
   model_selection(
@@ -1759,9 +1758,9 @@ saveRDS(rocr_plot_plotly,"~/Desktop/Shiny_application/files_generated/roc_curves
 confusion_matrix_dat
 
 suppressWarnings(lapply(confusion_matrix_dat,
-                        function(x) write.table( data.frame(x),
-                                                 "~/Desktop/Shiny_application/files_generated/confusion_matrices.txt",
-                                                 append= T, sep= "," )))
+       function(x) write.table( data.frame(x),
+                                "~/Desktop/Shiny_application/files_generated/confusion_matrices.txt",
+                                append= T, sep= "," )))
 
 saveRDS(confusion_matrix_dat,"~/Desktop/Shiny_application/files_generated/confusion_matrices.rds")
 
@@ -1770,6 +1769,7 @@ metrics_df
 write.csv(metrics_df,"~/Desktop/Shiny_application/files_generated/model_metrics.csv")
 saveRDS(metrics_df,"~/Desktop/Shiny_application/files_generated/model_metrics.rds")
 
+'''
 
 
 # ROC curves

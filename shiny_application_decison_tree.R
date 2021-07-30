@@ -225,8 +225,8 @@ server <- function(input, output, session) {
   
   
   lime_explainer <- reactive({
-    explainer <- lime(training_data %>% dplyr::select(feature_names), shiny_cart_model)
-    explanation <- lime::explain(data_set_input()[,names(training_data %>% dplyr::select(feature_names))[!names(training_data %>% dplyr::select(feature_names)) %in% "credit_risk"]],
+    explainer <- lime(training_data %>% dplyr::select(all_of(feature_names)), shiny_cart_model)
+    explanation <- lime::explain(data_set_input()[,names(training_data %>% dplyr::select(all_of(feature_names)))[!names(training_data %>% dplyr::select(all_of(feature_names))) %in% "credit_risk"]],
                                  explainer = explainer,
                                  n_labels = 2,
                                  n_features = 20)
