@@ -5,6 +5,7 @@ setwd("~/Desktop/Shiny_application/application")
 ######## Importing Libraries ########
 ######################################
 
+
 library(dplyr)           # Data Manipulation
 library(shiny)           # Shiny application
 library(shinydashboard)  # Shiny dashboard
@@ -47,7 +48,7 @@ sample_model <- readRDS("sample_model.rds")
 logit_model  <- readRDS("logistic_regression_model.rds") 
 
 # Cart Model with selected features 
-shiny_cart_model <- readRDS("~/Desktop/Shiny_application/application/cart_shiny_model.rds")
+shiny_cart_model <- readRDS("cart_shiny_model.rds")
 
 #########################################
 ############ Data Manipulation  #########
@@ -724,6 +725,6 @@ ui <- dashboardPage(
 # Shiny application
 shinyApp(ui = ui, server = server)
 
-#####
+
 
 

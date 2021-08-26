@@ -5,6 +5,7 @@ setwd("~/Desktop/Shiny_application")
 ######## Importing Libraries ########
 ######################################
 
+
 library(ggplot2)
 library(dplyr)        # Data Manipulation
 library(plotly)       # Data Visualization
@@ -16,7 +17,14 @@ library(caret)        # Machine learning
 library(pROC)         # ROC curves.
 library(gdata)        #
 library(rattle)       # Plot CART
-
+library(e1071)
+library(party)
+library(RWeka)
+library(lime)
+library(arm)
+library(C50)
+library(randomForest)
+library(CHAID)
 
 ###########################################
 ############ Importing Dataset ############
@@ -101,6 +109,8 @@ categorical_columns <-
 ############ Mapping Observations #########
 ###########################################
 
+cart_model$finalModel$frame
+
 
 # account_balance - Status of existing checking account (qualitative)
 
@@ -141,7 +151,7 @@ credit_data$credit_history <-
     )
   )
 
-
+cart_model$finalModel$frame
 
 credit_data$credit_purpose <-
   if_else(
@@ -407,6 +417,7 @@ credit_data$employment_history <-
     )
   )
 
+summary(credit_data)
 
 
 ################################################
@@ -1340,6 +1351,9 @@ table(training_data$credit_risk) / nrow(training_data) * 100
 table(testing_data$credit_risk) / nrow(testing_data) * 100
 
 
+
+
+
 ###########################################################
 ##################### Model Selection #####################
 ###########################################################
@@ -1348,7 +1362,6 @@ table(testing_data$credit_risk) / nrow(testing_data) * 100
 method_list <- c(
   "LogitBoost",
   "LMT",
-  "regLogistic",
   "naive_bayes",
   "PART",
   'C5.0Rules',
@@ -1360,26 +1373,27 @@ method_list <- c(
   "ctree",
   "ctree2",
   "glm",
-  "rf"
+  "rf",
+  "chaid"
 )
 
 # Model name list of caret models
 model_list <- c(
   "Boosted Logistic Regression",
   "Logistic Model Trees",
-  "Regularized Logistic Regression",
   "Naive Bayes",
   "Rule-Based Classifier",
   "Single C5.0 Ruleset",
   "Single C5.0 Tree",
   "Bagged CART",
   "Bayesian Generalized Linear Model",
-  "CART (cp)",
+  "CART (complexity parameter)",
   "CART (maxdepth)",
   "Conditional Inference Tree (mincriterion)",
   "Conditional Inference Tree (maxdepth)",
   "Generalized Linear Model",
-  "Random Forest"
+  "Random Forest",
+  "CHi-squared Automated Interaction Detection"
 )
 
 
@@ -1396,7 +1410,7 @@ caret_models_df
 #' Title - Function for model selection and comparison
 #'
 #' @param classification_models -  classification models from caret package
-#' @param predictor_features - Predictor features for the model
+
 #' @param return_type - if return_type == "confusion matrix" then return confusion matrices from the models
 
 #' - if return_type == "metrics dataframe" then return dataframe with model performance metrics with columns "Model", "Method","Accuracy","Kappa","Sensitivity","Specificity","Precision","Recall","F1-score","True_Positives","True_Negatives","False_Positives","False_Negatives","AUC"
@@ -1404,22 +1418,11 @@ caret_models_df
 #' - if return_type == "ROC curve" then return ROC curves for the models.
 
 
-
 model_selection <-
   function(classification_models,
-           predictor_features,
            return_type) {
     classification_models <- sort(classification_models)
     
-    # Subset predictor features without credit risk
-    predictor_features <-
-      predictor_features[!predictor_features %in% "credit_risk"]
-    
-    # Subset predictor features with "predictor_features"
-    training_data <-
-      training_data[, c("credit_risk", predictor_features)]
-    testing_data  <-
-      testing_data[, c("credit_risk", predictor_features)]
     
     # Repeated 10 fold  cross-validation
     set.seed(123)
@@ -1446,14 +1449,42 @@ model_selection <-
     rocr_curve_objs <- list()
     auc_list <- list()
     
+    
     for (i in classification_models) {
       set.seed(123)
-      classification_model <- train(
-        credit_risk ~ .,
-        data = training_data,
-        method = i,
-        trControl = fit_control
-      )
+      
+      if (i %in% c("C5.0Rules","C5.0Tree","LogitBoost")) {
+        classification_model <- train(
+          credit_risk~.,
+          data = training_data,
+          method = i,
+          trControl = fit_control
+        )
+      }
+      
+      else if (i == "chaid"){
+        classification_model <-  caret::train(
+          training_data %>% dplyr::select(account_balance,credit_history,credit_history,
+                                          savings_account_bonds,savings_account_bonds,
+                                          employment_history,marital_status_sex,
+                                          debtors_guarantor_status,property_type,
+                                          other_installment_plans,housing_type,job_status,
+                                          telephone_status,foreign_worker),
+          training_data$credit_risk,
+          method = i,
+          trControl = fit_control
+        )
+      }
+      
+      else {
+        classification_model <- train(
+          training_data %>% dplyr::select(-credit_risk),
+          training_data$credit_risk,
+          method = i,
+          trControl = fit_control
+        )
+      }
+      
       
       model_predictions <- predict(classification_model,
                                    newdata = testing_data,
@@ -1577,10 +1608,6 @@ model_selection <-
       return(rocr_plot)
     }
   }
-
-
-###################################################################
-
 
 #' Title - Tuning rpart model
 #'
@@ -1726,12 +1753,66 @@ tuning_rpart <- function(weight_list, return_type,algorithm) {
   }
 }
 
+rc <- model_selection(
+  c("chaid","rpart","ctree"),
+  "ROC curve")
+
+rc
+
+
+'''
+#####
+
+confusion_matrix_tree_based <-
+  model_selection(
+    c("chaid","rpart","C5.0Tree"),
+    "confusion matrix"
+  )
+
+metrics_df_tree_based  <-
+  model_selection(
+    c("chaid","rpart","C5.0Tree"),
+    "metrics dataframe"
+  )
+
+
+rocr_plot_plotly_tree_based <-
+  model_selection(
+    c("chaid","rpart","C5.0Tree"),
+                  "ROC curve")
+
+# ROC curves
+
+saveRDS(rocr_plot_plotly_tree_based,"~/Desktop/Shiny_application/files_generated/roc_curves_tree_based.rds")
+
+
+# confusion matrices
+
+
+suppressWarnings(lapply(confusion_matrix_tree_based,
+                        function(x) write.table( data.frame(x),
+                                                 "~/Desktop/Shiny_application/files_generated/confusion_matrices_tree_based.txt",
+                                                 append= T, sep= "," )))
+
+saveRDS(confusion_matrix_tree_based,"~/Desktop/Shiny_application/files_generated/confusion_matrices_tree_based.rds")
+
+# model metrics
+
+write.csv(metrics_df_tree_based,"~/Desktop/Shiny_application/files_generated/model_metrics_tree_based.csv")
+saveRDS(metrics_df_tree_based,"~/Desktop/Shiny_application/files_generated/model_metrics_tree_based.rds")
+
+'''
+#####
+
+
+##########
+##########
+##########
 '''
 
 confusion_matrix_dat <-
   model_selection(
     caret_models_df$method,
-    c(categorical_columns, numerical_columns),
     "confusion matrix"
   )
 
@@ -1739,13 +1820,11 @@ confusion_matrix_dat <-
 metrics_df  <-
   model_selection(
     caret_models_df$method,
-    c(categorical_columns, numerical_columns),
     "metrics dataframe"
   )
 
 rocr_plot_plotly <-
   model_selection(caret_models_df$method,
-                  c(numerical_columns, categorical_columns),
                   "ROC curve")
 
 
@@ -1769,6 +1848,9 @@ metrics_df
 write.csv(metrics_df,"~/Desktop/Shiny_application/files_generated/model_metrics.csv")
 saveRDS(metrics_df,"~/Desktop/Shiny_application/files_generated/model_metrics.rds")
 
+##########
+##########
+##########
 '''
 
 
@@ -1808,6 +1890,7 @@ logit_model <- caret::train(
   method = "glm",
   trControl = fit_control
 )
+
 
 
 # Model Summary
@@ -1946,6 +2029,7 @@ confusionMatrix(logit_model_trees_predictions,
 #################  Conditional Inference Tree (mincriterion) #################
 ##############################################################################
 
+caret_models_df
 
 # Repeated 10 fold  cross-validation
 set.seed(123)
@@ -1966,11 +2050,13 @@ ctree_model <- caret::train(
   trControl = fit_control,
 )
 
+cart_model$finalModel$frame
 
 
 # Model Summary
 summary(ctree_model$finalModel)
-ctree_model$finalModel
+
+cart_model$finalModel$frame
 
 plot(ctree_model$finalModel)
 
@@ -1987,10 +2073,66 @@ ctree_model_predictions <- predict(ctree_model,
 # Classification report
 confusionMatrix(ctree_model_predictions, testing_data$credit_risk, positive = "Bad")
 
+##############################################################################
+#################  CSingle C5.0 Tree          ################################
+##############################################################################
+
+#######################################################################################################
+#################  CHi-squared Automated Interaction Detection (alpha2, alpha3, alpha4)      ##########
+#######################################################################################################
+
+# Repeated 10 fold  cross-validation
+set.seed(123)
+fit_control <- trainControl(
+  method = "repeatedcv",
+  number = 10,
+  repeats = 10,
+  search = "random"
+)
+
+
+# Conditional Inference Tree (mincriterion)
+set.seed(123)
+chaid_model <- caret::train(
+  training_data %>% dplyr::select(account_balance,credit_history,credit_history,
+                                  savings_account_bonds,savings_account_bonds,
+                                  employment_history,marital_status_sex,
+                                  debtors_guarantor_status,property_type,
+                                  other_installment_plans,housing_type,job_status,
+                                  telephone_status,foreign_worker
+  ),
+  training_data$credit_risk,
+  method = "chaid",
+  trControl = fit_control
+)
+
+
+# Model Summary
+summary(chaid_model$finalModel)
+chaid_model$finalModel
+
+plot(chaid_model$finalModel)
+
+
+fancyRpartPlot(chaid_model$finalModel)
+
+# Predict Probabilities
+chaid_model_probabilities <- predict(chaid_model,
+                                     type = "prob", newdata = testing_data)
+
+# Predict labels
+chaid_model_predictions <- predict(chaid_model,
+                                   type = "raw", newdata = testing_data)
+
+# Classification report
+confusionMatrix(chaid_model_predictions, testing_data$credit_risk, positive = "Bad")
+
+
 
 #######################################################################################################
 #################  CART - Classification and Regression Trees (rpart - complexity parameter) ##########
 #######################################################################################################
+
 
 # Repeated 10 fold  cross-validation
 set.seed(123)
@@ -2014,10 +2156,12 @@ rpart_model <- caret::train(
 
 # Model Summary
 summary(rpart_model$finalModel)
-rpart_model
+
 
 # plot complexity parameter
 plot(rpart_model, plotType = "line")
+
+
 
 # Predict Probabilities
 rpart_probabilities <- stats::predict(rpart_model,
@@ -2033,7 +2177,7 @@ confusionMatrix(rpart_predictions, testing_data$credit_risk, positive = "Bad")
 
 # Plot Tree
 fancyRpartPlot(rpart_model$finalModel,
-               main = "Classification Tree")
+               main = "Classification Tree",tweak = 2)
 
 
 #################################################################################################
@@ -2045,9 +2189,17 @@ fancyRpartPlot(rpart_model$finalModel,
 # Select optimal weight ratio
 weight_df <- tuning_rpart(seq(1,2,0.1),return_type = "metrics dataframe","rpart")
 weight_df
+write.csv(weight_df,"~/Desktop/Shiny_application/files_generated/weight_df.csv")
+
+ggplot(data = weight_df) + geom_point(aes(x = Weight,y= AUC,group = 1,color = "blue"))  +
+  geom_point(aes(x = Weight,y= Accuracy,group = 1))  +
+  theme(axis.text.x=element_text(angle=90, hjust=1))
+
+
+plot(weight_df$AUC - weight_df$Accuracy)
 
 # selct model
-roc_rpart_select <- tuning_rpart(c(1,1.8),return_type = "ROC curve","rpart")
+roc_rpart_select <- tuning_rpart(c(1,1.8,1.7,1.9),return_type = "ROC curve","rpart")
 roc_rpart_select
 
 
@@ -2070,7 +2222,8 @@ rpart_model_tuned <- caret::train(
   training_data$credit_risk,
   method = "rpart",
   trControl = fit_control_tuned,
-  weights = weight_ratio
+  weights = weight_ratio,
+  tuneLength = 6
 )
 
 rpart_model_tuned$finalModel
@@ -2078,6 +2231,7 @@ rpart_model_tuned$finalModel
 # Model Summary
 summary(rpart_model_tuned$finalModel)
 
+rpart_model_tuned
 
 # plot complexity parameter
 plot(rpart_model_tuned, plotType = "line")
@@ -2096,8 +2250,7 @@ confusionMatrix(rpart_predictions_tuned, testing_data$credit_risk, positive = "B
 
 
 # Plot Tree
-fancyRpartPlot(rpart_model_tuned$finalModel,
-               main = "Classification Tree")
+fancyRpartPlot(rpart_model_tuned$finalModel,tweak=2)
 
 # Model on subset features
 
@@ -2116,6 +2269,9 @@ fit_control_shiny_dt <- trainControl(
 # Set weight ratio
 weight_ratio <- ifelse(training_data$credit_risk == "Good",1,1.8)
 
+
+shiny_cart_model
+
 #  rpart model
 set.seed(123)
 rpart_model_shiny_dt <- caret::train(
@@ -2126,6 +2282,12 @@ rpart_model_shiny_dt <- caret::train(
   weights = weight_ratio,
   tuneLength = 10
 )
+
+rpart_model_shiny_dt
+
+fancyRpartPlot(rpart_model$finalModel)
+
+
 
 # plot complexity parameter
 plot(rpart_model_shiny_dt, plotType = "line")
@@ -2147,7 +2309,7 @@ confusionMatrix(rpart_predictions_shiny_dt, testing_data$credit_risk, positive =
 
 # Plot Tree
 fancyRpartPlot(rpart_model_shiny_dt$finalModel,
-               main = "Classification Tree")
+               tweak = 2)
 
 
 
@@ -2162,7 +2324,7 @@ saveRDS(rpart_model_shiny_dt,
 
 #######
 
-library(lime)
+
 
 shiny_features
 
@@ -2181,4 +2343,8 @@ explanation %>% as.data.frame() %>% head(n =1)
 plot_features(explanation)
 
 #######
+
+
+
+unique(shiny_cart_model$finalModel$frame$var)
 

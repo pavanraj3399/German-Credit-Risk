@@ -1,8 +1,6 @@
 ######## Setting working directory
 setwd("~/Desktop/Shiny_application/application")
 
-# Decisontree
-
 #####################################
 ######## Importing Libraries ########
 ######################################
@@ -49,7 +47,7 @@ sample_model <- readRDS("sample_model.rds")
 logit_model  <- readRDS("logistic_regression_model.rds") 
 
 # Cart Model with selected features 
-shiny_cart_model <- readRDS("~/Desktop/Shiny_application/application/cart_shiny_model.rds")
+shiny_cart_model <- readRDS("cart_shiny_model.rds")
 
 
 #########################################
@@ -125,7 +123,7 @@ picker_widget_list <- picker_creator(categorical_columns)
 #' 
 
 slider_creator <- function(features) {
-  slider_features <- features[!features %in% radio_button_columns]
+  slider_features <- features[!features %in% "credit_risk"]
   slider_list <- list()
   
   for (i in slider_features) {
@@ -160,9 +158,7 @@ guide <- Cicerone$
     description = "This is where you submit your information for processing."
   )
 
-shiny_features
 
-feature_names
 
 # Server
 server <- function(input, output, session) {
@@ -231,7 +227,7 @@ server <- function(input, output, session) {
     explanation <- lime::explain(data_set_input()[,names(training_data %>% dplyr::select(all_of(feature_names)))[!names(training_data %>% dplyr::select(all_of(feature_names))) %in% "credit_risk"]],
                                  explainer = explainer,
                                  n_labels = 2,
-                                 n_features = 20)
+                                 n_features = 10)
     explanation <- explanation %>% as.data.frame()
     return(explanation)
   })
@@ -560,9 +556,7 @@ body <-
         tags$h3("Participant Information Sheet",style="color:black"),
         HTML("<p> For the Participant Information Sheet <a href='https://drive.google.com/file/d/1w6T6iVdJz7JEQSoh-IMzgaHVWa82GvOh/view?usp=sharing'> Click here </a>!</p>"),
         tags$h3("Online Survey",style="color:black"),
-        HTML("<p> To take an online survey <a href='https://docs.google.com/forms/d/e/1FAIpQLSc8sdRn4HGJrdHHJPOJziApmybCj0XxurcrAV4nLsUAkkuw_g/viewform'> Click here </a>!</p>"),
-        tags$h3("Online Consent Form ",style="color:black"),
-        HTML("<p> For the Online Consent Form <a href='https://drive.google.com/file/d/1Lg1BZIKCP0JcLLqQbYQlRxP4lyAULYaB/view?usp=sharing'> Click here </a>!</p>"),
+        HTML("<p> To take an online survey <a href='https://docs.google.com/forms/d/e/1FAIpQLSf5zfutZOkCqp4IHCmOtyXpfllMiuoh9_abdvQ8zysUXWFowA/viewform?usp=sf_link'> Click here </a>!</p>"),
         title = "Documentation",
         icon = icon("folder-open", lib = "glyphicon")
       )
