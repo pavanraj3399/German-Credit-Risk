@@ -574,6 +574,8 @@ ui <- dashboardPage(
   body = body
 )
 
+ui
+
 
 # Shiny application
 shinyApp(ui = ui, server = server)

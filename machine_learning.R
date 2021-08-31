@@ -109,7 +109,7 @@ categorical_columns <-
 ############ Mapping Observations #########
 ###########################################
 
-cart_model$finalModel$frame
+
 
 
 # account_balance - Status of existing checking account (qualitative)
@@ -150,8 +150,6 @@ credit_data$credit_history <-
       )
     )
   )
-
-cart_model$finalModel$frame
 
 credit_data$credit_purpose <-
   if_else(
@@ -2029,7 +2027,6 @@ confusionMatrix(logit_model_trees_predictions,
 #################  Conditional Inference Tree (mincriterion) #################
 ##############################################################################
 
-caret_models_df
 
 # Repeated 10 fold  cross-validation
 set.seed(123)
@@ -2050,13 +2047,11 @@ ctree_model <- caret::train(
   trControl = fit_control,
 )
 
-cart_model$finalModel$frame
 
 
 # Model Summary
 summary(ctree_model$finalModel)
 
-cart_model$finalModel$frame
 
 plot(ctree_model$finalModel)
 
@@ -2270,7 +2265,6 @@ fit_control_shiny_dt <- trainControl(
 weight_ratio <- ifelse(training_data$credit_risk == "Good",1,1.8)
 
 
-shiny_cart_model
 
 #  rpart model
 set.seed(123)
