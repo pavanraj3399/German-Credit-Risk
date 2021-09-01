@@ -1,5 +1,5 @@
 ######## Setting working directory
-setwd("~/Desktop/Shiny_application/application")
+setwd("~/Documents/GitHub/German-Credit-Risk")
 
 #####################################
 ######## Importing Libraries ########
