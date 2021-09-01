@@ -574,7 +574,7 @@ ui <- dashboardPage(
   body = body
 )
 
-ui
+uih
 
 
 # Shiny application
